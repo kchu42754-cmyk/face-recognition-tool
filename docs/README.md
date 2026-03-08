@@ -1,22 +1,22 @@
-# 人脸识别聚类工具
+# 人脸聚类工具
 
-基于 InsightFace (ONNX) GPU 加速的本地离线人脸聚类整理工具。
+基于 InsightFace (ONNX) 的本地离线人脸聚类整理工具，支持 GPU 加速、缓存续跑，以及面向大规模数据的稳态聚类。
 
-## 功能特性
+## 功能
 
-- ✅ GPU 加速 (CUDA)
-- ✅ 纯离线处理，不上云
-- ✅ 支持多人脸检测
-- ✅ 分批聚类，避免 OOM
-- ✅ 增量处理（断点续传）
+- GPU 加速提取人脸特征
+- 全离线处理，不上传图片
+- 支持单图多人脸
+- 缓存断点续跑
+- 大规模数据自动切换到内存稳定的聚类后端
 
 ## 环境要求
 
 | 组件 | 版本 |
-|------|------|
+| --- | --- |
 | Python | 3.12+ |
-| CUDA | 12.6 |
-| GPU | NVIDIA RTX 3060+ |
+| CUDA | 12.x |
+| GPU | NVIDIA RTX 3060 或更高 |
 
 ## 安装依赖
 
@@ -24,11 +24,9 @@
 pip install insightface onnxruntime-gpu numpy scikit-learn tqdm pillow opencv-python
 ```
 
-## 使用方法
+## 路径配置
 
-### 1. 修改路径配置
-
-编辑 `src/face_cluster.py` 中的路径配置：
+编辑 [`src/face_cluster.py`](../src/face_cluster.py) 中的目录配置：
 
 ```python
 BASE_DIR = Path("/mnt/私密文件")
@@ -38,96 +36,48 @@ FACES_DIR = BASE_DIR / "faces"
 METADATA_DIR = BASE_DIR / "metadata"
 ```
 
-### 2. 运行程序
+## 运行方式
 
 ```bash
-# 后台运行
+mkdir -p logs
 nohup python3 src/face_cluster.py > logs/face_cluster.log 2>&1 &
-
-# 查看进度
 tail -f logs/face_cluster.log
-
-# 查看GPU状态
 nvidia-smi
 ```
 
-### 3. 测试模式
+## 聚类策略
 
-修改脚本中的测试配置：
+- 当人脸数不超过 `30,000` 时，使用 `AgglomerativeClustering`
+- 当人脸数超过 `30,000` 时，自动切换到 `Birch`
+- `Birch` 的引入是为了避免全量距离矩阵导致的内存爆炸
 
-```python
-TEST_MODE = True   # 开启测试模式
-TEST_LIMIT = 1000  # 测试图片数量
-```
-
-## 配置参数
+当前关键参数：
 
 | 参数 | 默认值 | 说明 |
-|------|--------|------|
-| FACE_TOLERANCE | 0.6 | 聚类阈值 (欧氏距离) |
-| MAX_CLUSTER_SIZE | 30000 | 单次聚类最大人脸数 |
-| BATCH_SIZE | 100 | 批处理大小 |
+| --- | --- | --- |
+| `FACE_TOLERANCE` | `0.6` | 小规模精确聚类的欧氏距离阈值 |
+| `MAX_AGGLOMERATIVE_SIZE` | `30000` | 超过后切换到 `Birch` |
+| `BIRCH_THRESHOLD` | `0.75` | 大规模聚类阈值 |
+| `BIRCH_BRANCHING_FACTOR` | `50` | `Birch` 分支因子 |
 
 ## 输出结构
 
-```
+```text
 /mnt/私密文件/
-├── images/                    # 原始图片
+├── images/
 ├── faces/
-│   ├── face_cache_v3.pkl      # 人脸特征缓存
-│   └── face_XXX/              # 旧分组（保留）
-├── organized/                 # ⭐ 整理后输出
-│   ├── cluster_XXXXX/         # 人脸分组
-│   └── no_face/               # 无人脸图片
+│   └── face_cache_v3.pkl
+├── organized/
+│   ├── cluster_00000/
+│   ├── cluster_00001/
+│   └── no_face/
 └── metadata/
-    └── clusters.json          # 元数据
+    └── clusters.json
 ```
 
-## 性能数据
+## 已知说明
 
-| 硬件 | 处理速度 | 173k图片预计时间 |
-|------|----------|------------------|
-| RTX 3060 6GB | ~40张/秒 | ~1.5小时 |
-
-## 项目结构
-
-```
-人脸识别工具/
-├── src/
-│   └── face_cluster.py        # 主程序
-├── docs/
-│   ├── README.md              # 说明文档
-│   └── CHANGELOG.md           # 更新日志
-├── logs/                      # 日志目录
-└── config/                    # 配置目录
-```
-
-## 维护指南
-
-### 断点续传
-
-程序会自动保存缓存，支持中断后继续处理：
-
-```bash
-# 查看缓存
-ls -lh /mnt/私密文件/faces/face_cache_v3.pkl
-```
-
-### 常见问题
-
-**Q: GPU 未检测到**
-A: 检查 CUDA 驱动安装：`nvidia-smi`
-
-**Q: 内存不足**
-A: 减小 `MAX_CLUSTER_SIZE` 参数
-
-**Q: 处理速度慢**
-A: 检查 GPU 利用率，确保使用 CUDA 版本
-
-## 更新日志
-
-### v3.0 (2026-03-08)
-- 基于 InsightFace GPU 加速重构
-- 支持断点续传
-- 修复聚类参数问题
-- 优化内存使用
+- 少量损坏图片或 GIF 会在提取阶段被跳过，不会阻塞整批任务
+- 大规模运行时请优先复用已有缓存，不要重复跑特征提取
+- 如果目标文件系统不允许创建硬链接，脚本会自动回退到 `copy2`
+- 2026-03-08 的 OOM 事故复盘见 [`INCIDENT-2026-03-08-oom.md`](./INCIDENT-2026-03-08-oom.md)
