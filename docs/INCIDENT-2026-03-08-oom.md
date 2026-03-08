@@ -68,3 +68,5 @@
 - `images_without_faces`: `38006`
 - `cluster_count`: `27542`
 - `cluster_backend`: `birch`
+
+后续补充核对还发现，历史归档目录中有一批 `.jpe` / `.bmp` 图片虽然原图存在于 `images/`，但因为旧版扫描扩展名不全、且仅覆盖了全小写与全大写模式，没有进入本次缓存。主程序随后已补齐这些扩展名，并改为基于 `suffix.lower()` 的大小写不敏感扫描，避免二次漏扫。

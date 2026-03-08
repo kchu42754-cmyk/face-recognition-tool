@@ -60,6 +60,20 @@ nvidia-smi
 | `BIRCH_THRESHOLD` | `0.75` | 大规模聚类阈值 |
 | `BIRCH_BRANCHING_FACTOR` | `50` | `Birch` 分支因子 |
 
+## 支持的图片扩展名
+
+- `.jpg`
+- `.jpeg`
+- `.jpe`
+- `.png`
+- `.gif`
+- `.webp`
+- `.bmp`
+- `.tif`
+- `.tiff`
+
+扩展名匹配按大小写不敏感处理，例如 `.Jpg`、`.JPeG` 也会被扫描到。
+
 ## 输出结构
 
 ```text

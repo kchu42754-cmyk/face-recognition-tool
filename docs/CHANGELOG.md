@@ -7,6 +7,8 @@
 - Avoided OOM during the cross-batch merge stage on 155k+ face embeddings
 - Normalized embeddings before clustering to keep distance behavior stable across backends
 - Added copy fallback when hard-link creation is not permitted on the target filesystem
+- Expanded image scanning coverage to include `.jpe`, `.bmp`, `.tif`, and `.tiff`
+- Switched file discovery to case-insensitive suffix matching so mixed-case extensions are not skipped
 
 ### Added
 - Metadata output now records the clustering backend and thresholds used for the run

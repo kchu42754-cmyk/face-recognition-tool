@@ -44,14 +44,25 @@ BIRCH_THRESHOLD = 0.75
 BIRCH_BRANCHING_FACTOR = 50
 TEST_MODE = False
 TEST_LIMIT = 1_000
+IMAGE_EXTENSIONS = (
+    ".jpg",
+    ".jpeg",
+    ".jpe",
+    ".png",
+    ".gif",
+    ".webp",
+    ".bmp",
+    ".tif",
+    ".tiff",
+)
 
 
 def get_image_files(directory: Path) -> List[Path]:
-    exts = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+    extensions = {ext.lower() for ext in IMAGE_EXTENSIONS}
     files: List[Path] = []
-    for ext in exts:
-        files.extend(directory.rglob(f"*{ext}"))
-        files.extend(directory.rglob(f"*{ext.upper()}"))
+    for path in directory.rglob("*"):
+        if path.is_file() and path.suffix.lower() in extensions:
+            files.append(path)
     return files
 
 
